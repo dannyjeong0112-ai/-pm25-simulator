@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PM2.5 혼합고 인터랙티브 시뮬레이터</title>
+<style>
+:root{
+  --bg:#eef2f7;
+  --card:#ffffff;
+  --ink:#172033;
+  --muted:#657085;
+  --line:#d8dee9;
+  --accent:#2563eb;
+  --green:#16a34a;
+  --yellow:#ca8a04;
+  --orange:#ea580c;
+  --red:#dc2626;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Arial,"Noto Sans KR",sans-serif;
+  color:var(--ink);
+  background:linear-gradient(180deg,#eef4fb 0%,#f7f9fc 100%);
+}
+.wrapper{
+  max-width:1380px;
+  margin:0 auto;
+  padding:22px;
+}
+header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:20px;
+  margin-bottom:18px;
+}
+h1{margin:0;font-size:30px;letter-spacing:-.4px}
+.subtitle{margin-top:7px;color:var(--muted);line-height:1.6}
+.badge{
+  background:#dbeafe;
+  color:#1d4ed8;
+  border:1px solid #bfdbfe;
+  border-radius:999px;
+  padding:8px 12px;
+  font-weight:700;
+  white-space:nowrap;
+}
+.layout{
+  display:grid;
+  grid-template-columns:360px 1fr;
+  gap:18px;
+}
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:16px;
+  box-shadow:0 10px 30px rgba(15,23,42,.07);
+}
+.controls{padding:18px;position:sticky;top:14px;height:max-content}
+.section-title{
+  font-size:16px;
+  font-weight:800;
+  margin:0 0 12px;
+}
+.control{
+  padding:14px 0 18px;
+  border-bottom:1px solid #edf0f4;
+}
+.control:last-of-type{border-bottom:none}
+.label-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+  margin-bottom:8px;
+}
+.label-row strong{font-size:15px}
+.value{font-size:20px;font-weight:800}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.scale{
+  display:flex;
+  justify-content:space-between;
+  font-size:11px;
+  color:var(--muted);
+  margin-top:4px;
+}
+.scenarios{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:8px;
+}
+button{
+  border:1px solid var(--line);
+  background:#f8fafc;
+  color:var(--ink);
+  padding:10px 9px;
+  border-radius:10px;
+  font-weight:700;
+  cursor:pointer;
+}
+button:hover{background:#eef4ff;border-color:#aac4ff}
+button.primary{background:#2563eb;color:white;border-color:#2563eb}
+.main{
+  display:grid;
+  grid-template-rows:auto auto auto;
+  gap:18px;
+}
+.top-metrics{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:12px;
+  padding:16px;
+}
+.metric{
+  background:#f8fafc;
+  border:1px solid var(--line);
+  border-radius:13px;
+  padding:14px;
+}
+.metric .name{font-size:12px;color:var(--muted)}
+.metric .number{font-size:29px;font-weight:900;margin-top:5px}
+.metric .unit{font-size:13px;color:var(--muted);font-weight:600}
+.status{
+  margin:0 16px 16px;
+  padding:13px 15px;
+  border-radius:10px;
+  font-weight:800;
+  border:1px solid transparent;
+}
+.visual-grid{
+  display:grid;
+  grid-template-columns:1.4fr 1fr;
+  gap:18px;
+}
+.visual-card{padding:16px}
+.canvas-wrap{position:relative}
+canvas{
+  width:100%;
+  background:#f8fafc;
+  border:1px solid var(--line);
+  border-radius:12px;
+}
+#scene{height:420px}
+#chart{height:420px}
+.overlay{
+  position:absolute;
+  left:15px;
+  bottom:14px;
+  background:rgba(255,255,255,.88);
+  border:1px solid rgba(255,255,255,.95);
+  border-radius:10px;
+  padding:9px 11px;
+  font-size:12px;
+  line-height:1.5;
+}
+.bottom-grid{
+  display:grid;
+  grid-template-columns:1.1fr 1fr;
+  gap:18px;
+}
+.info-card{padding:18px}
+.formula{
+  font-family:"Times New Roman",serif;
+  font-size:24px;
+  text-align:center;
+  padding:16px;
+  background:#f8fafc;
+  border:1px solid var(--line);
+  border-radius:12px;
+}
+.breakdown{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+  margin-top:12px;
+}
+.factor{
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:11px;
+  background:#fbfcfe;
+}
+.factor b{display:block;font-size:21px;margin-top:4px}
+.explain{line-height:1.75;color:#344055}
+.note{
+  font-size:12px;
+  line-height:1.65;
+  color:var(--muted);
+  background:#f8fafc;
+  border-left:4px solid #94a3b8;
+  padding:11px 12px;
+  border-radius:8px;
+}
+.legend{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-top:9px;
+  color:var(--muted);
+  font-size:12px;
+}
+.legend span::before{
+  content:"";
+  display:inline-block;
+  width:9px;height:9px;border-radius:50%;
+  margin-right:5px;
+}
+.l1::before{background:#111827}
+.l2::before{background:#2563eb}
+.l3::before{background:#ef4444}
+.l4::before{background:#0f766e}
+@media(max-width:1050px){
+  .layout{grid-template-columns:1fr}
+  .controls{position:static}
+  .visual-grid,.bottom-grid{grid-template-columns:1fr}
+}
+@media(max-width:720px){
+  .top-metrics{grid-template-columns:1fr 1fr}
+  header{flex-direction:column}
+  .wrapper{padding:12px}
+  h1{font-size:24px}
+}
+</style>
+</head>
+<body>
+<div class="wrapper">
+<header>
+  <div>
+    <h1>PM2.5 혼합고 인터랙티브 시뮬레이터</h1>
+    <div class="subtitle">
+      혼합고·풍속·지면온도를 조절하여 대기 정체와 미세먼지 농축 효과를 실시간으로 확인합니다.
+    </div>
+  </div>
+  <div class="badge">교육용 0차원 박스 모델</div>
+</header>
+
+<div class="layout">
+  <aside class="card controls">
+    <div class="section-title">입력 변수</div>
+
+    <div class="control">
+      <div class="label-row">
+        <strong>혼합고</strong>
+        <span class="value"><span id="hVal">800</span> m</span>
+      </div>
+      <input id="height" type="range" min="200" max="2000" step="50" value="800">
+      <div class="scale"><span>200 m</span><span>2000 m</span></div>
+    </div>
+
+    <div class="control">
+      <div class="label-row">
+        <strong>풍속</strong>
+        <span class="value"><span id="wVal">1.5</span> m/s</span>
+      </div>
+      <input id="wind" type="range" min="0.2" max="6.0" step="0.1" value="1.5">
+      <div class="scale"><span>0.2 m/s</span><span>6.0 m/s</span></div>
+    </div>
+
+    <div class="control">
+      <div class="label-row">
+        <strong>지면온도</strong>
+        <span class="value"><span id="tVal">5</span> ℃</span>
+      </div>
+      <input id="temp" type="range" min="-10" max="30" step="1" value="5">
+      <div class="scale"><span>-10 ℃</span><span>30 ℃</span></div>
+    </div>
+
+    <div class="section-title" style="margin-top:16px">빠른 시나리오</div>
+    <div class="scenarios">
+      <button onclick="setScenario(250,0.5,-5)">겨울 새벽</button>
+      <button onclick="setScenario(700,1.5,5)">흐린 오전</button>
+      <button onclick="setScenario(1500,3.5,22)">맑은 오후</button>
+      <button onclick="setScenario(2000,5.0,25)">강한 확산</button>
+    </div>
+
+    <div class="scenarios" style="grid-template-columns:1fr;margin-top:10px">
+      <button class="primary" onclick="resetModel()">기준 상태로 초기화</button>
+      <button onclick="downloadCSV()">현재 기록 CSV 저장</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <section class="card">
+      <div class="top-metrics">
+        <div class="metric">
+          <div class="name">예상 PM2.5 농도</div>
+          <div class="number"><span id="pmVal">0.0</span> <span class="unit">µg/m³</span></div>
+        </div>
+        <div class="metric">
+          <div class="name">기준 대비 농축 배수</div>
+          <div class="number"><span id="ratioVal">0.00</span><span class="unit">배</span></div>
+        </div>
+        <div class="metric">
+          <div class="name">환기 지수</div>
+          <div class="number"><span id="ventVal">0</span><span class="unit"> m²/s</span></div>
+        </div>
+        <div class="metric">
+          <div class="name">대기 상태</div>
+          <div class="number" style="font-size:22px"><span id="airState">-</span></div>
+        </div>
+      </div>
+      <div id="status" class="status"></div>
+    </section>
+
+    <section class="visual-grid">
+      <div class="card visual-card">
+        <div class="section-title">대기 박스 시각화</div>
+        <div class="canvas-wrap">
+          <canvas id="scene" width="820" height="420"></canvas>
+          <div class="overlay">
+            점이 빽빽할수록 농도가 높습니다.<br>
+            파란 경계선은 혼합고입니다.
+          </div>
+        </div>
+        <div class="legend">
+          <span class="l1">PM2.5</span>
+          <span class="l2">혼합고</span>
+          <span class="l3">지면 가열</span>
+          <span class="l4">바람</span>
+        </div>
+      </div>
+
+      <div class="card visual-card">
+        <div class="section-title">조작 기록 그래프</div>
+        <canvas id="chart" width="600" height="420"></canvas>
+        <div class="note" style="margin-top:10px">
+          슬라이더를 움직일 때마다 농도 기록이 추가됩니다. 발표 중 조건을 바꾸며 농도 변화 추세를 보여줄 수 있습니다.
+        </div>
+      </div>
+    </section>
+
+    <section class="bottom-grid">
+      <div class="card info-card">
+        <div class="section-title">모델식과 기여도</div>
+        <div class="formula">
+          C = C₀ × (H₀/H) × F<sub>wind</sub> × F<sub>temp</sub>
+        </div>
+        <div class="breakdown">
+          <div class="factor">
+            혼합고 효과
+            <b id="fH">1.00배</b>
+          </div>
+          <div class="factor">
+            풍속 효과
+            <b id="fW">1.00배</b>
+          </div>
+          <div class="factor">
+            지면온도 효과
+            <b id="fT">1.00배</b>
+          </div>
+        </div>
+      </div>
+
+      <div class="card info-card">
+        <div class="section-title">현재 조건 해석</div>
+        <div id="explain" class="explain"></div>
+        <div class="note" style="margin-top:12px">
+          이 시뮬레이터는 CMAQ 자체가 아니라, CMAQ가 다루는 수직 혼합·수평 환기·대기 안정 효과를 단순화한 교육용 모델입니다.
+          실제 예측에는 배출량, 습도, 강수, 기온역전, 지형, 외부 유입, 화학반응이 추가로 필요합니다.
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+</div>
+
+<script>
+const el = id => document.getElementById(id);
+const heightEl = el('height');
+const windEl = el('wind');
+const tempEl = el('temp');
+const scene = el('scene');
+const chart = el('chart');
+const sctx = scene.getContext('2d');
+const cctx = chart.getContext('2d');
+
+let history = [];
+let particlePhase = 0;
+
+function clamp(v,min,max){return Math.max(min,Math.min(max,v));}
+
+function calculate(H, wind, temp){
+  const C0 = 25;
+  const H0 = 1000;
+  const heightFactor = H0 / H;
+  const windFactor = Math.pow(2 / Math.max(wind,0.2),0.55);
+  const tempFactor = clamp(1 + (10-temp)*0.025,0.65,1.50);
+  let concentration = C0 * heightFactor * windFactor * tempFactor;
+  concentration = clamp(concentration,1,300);
+
+  const ventilationIndex = H * wind;
+  let stability;
+  if(temp < 0 && wind < 1) stability = "매우 안정";
+  else if(temp < 8 && wind < 2) stability = "안정";
+  else if(temp > 18 && wind > 2) stability = "불안정";
+  else stability = "중립";
+
+  return {
+    concentration,
+    ratio: concentration/C0,
+    heightFactor, windFactor, tempFactor,
+    ventilationIndex, stability
+  };
+}
+
+function category(pm){
+  if(pm<=15) return {txt:"좋음",bg:"#dcfce7",fg:"#166534",line:"#16a34a"};
+  if(pm<=35) return {txt:"보통",bg:"#fef9c3",fg:"#854d0e",line:"#ca8a04"};
+  if(pm<=75) return {txt:"나쁨",bg:"#ffedd5",fg:"#9a3412",line:"#ea580c"};
+  return {txt:"매우 나쁨",bg:"#fee2e2",fg:"#991b1b",line:"#dc2626"};
+}
+
+function update(addHistory=true){
+  const H = +heightEl.value;
+  const wind = +windEl.value;
+  const temp = +tempEl.value;
+  const r = calculate(H,wind,temp);
+  const cat = category(r.concentration);
+
+  el('hVal').textContent = H.toFixed(0);
+  el('wVal').textContent = wind.toFixed(1);
+  el('tVal').textContent = temp.toFixed(0);
+  el('pmVal').textContent = r.concentration.toFixed(1);
+  el('ratioVal').textContent = r.ratio.toFixed(2);
+  el('ventVal').textContent = Math.round(r.ventilationIndex);
+  el('airState').textContent = r.stability;
+  el('fH').textContent = r.heightFactor.toFixed(2)+"배";
+  el('fW').textContent = r.windFactor.toFixed(2)+"배";
+  el('fT').textContent = r.tempFactor.toFixed(2)+"배";
+
+  const st = el('status');
+  st.textContent = `PM2.5 ${cat.txt} 수준 — ${r.concentration.toFixed(1)} µg/m³`;
+  st.style.background = cat.bg;
+  st.style.color = cat.fg;
+  st.style.borderColor = cat.line;
+
+  let lines = [];
+  if(H<=400) lines.push("혼합고가 매우 낮아 같은 배출량이 작은 대기 부피에 집중됩니다");
+  else if(H>=1500) lines.push("혼합고가 높아 오염물질이 넓은 수직 공간으로 희석됩니다");
+  else lines.push("혼합고는 중간 수준으로, 수직 희석 효과가 제한적으로 작용합니다");
+
+  if(wind<1) lines.push("풍속이 약해 도시 밖으로 빠져나가는 수평 환기가 매우 느립니다");
+  else if(wind>=3.5) lines.push("강한 바람이 대기 교환을 촉진해 농도를 낮춥니다");
+  else lines.push("풍속은 보통 수준으로, 일부 환기 효과가 나타납니다");
+
+  if(temp<0) lines.push("차가운 지면은 대기를 안정하게 만들어 난류 혼합을 억제하는 방향으로 작용합니다");
+  else if(temp>20) lines.push("따뜻한 지면은 상승기류와 난류 발달에 유리해 희석을 촉진합니다");
+  else lines.push("지면온도 효과는 기준 조건 부근입니다");
+
+  el('explain').innerHTML =
+    `<b>해석:</b> ${lines.join(". ")}. ` +
+    `따라서 기준 농도 25 µg/m³에 세 효과를 곱한 결과, 예상 농도는 ` +
+    `<b>${r.concentration.toFixed(1)} µg/m³</b>입니다.`;
+
+  if(addHistory){
+    history.push({
+      n: history.length+1,
+      H, wind, temp,
+      pm: r.concentration
+    });
+    if(history.length>40) history.shift();
+  }
+  drawChart();
+}
+
+function drawScene(){
+  const H = +heightEl.value;
+  const wind = +windEl.value;
+  const temp = +tempEl.value;
+  const r = calculate(H,wind,temp);
+
+  const W=scene.width, HH=scene.height;
+  sctx.clearRect(0,0,W,HH);
+
+  const grad=sctx.createLinearGradient(0,0,0,HH);
+  grad.addColorStop(0,"#cfe8ff");
+  grad.addColorStop(.65,"#edf5fb");
+  grad.addColorStop(.66,"#d9dde3");
+  grad.addColorStop(1,"#7a8088");
+  sctx.fillStyle=grad;
+  sctx.fillRect(0,0,W,HH);
+
+  const groundY=340;
+  const topY = 300 - ((H-200)/(2000-200))*245;
+
+  // city silhouette
+  sctx.fillStyle="#5f6670";
+  for(let x=0;x<W;x+=52){
+    const bh=28+(x%130);
+    sctx.fillRect(x,groundY-bh,38,bh);
+  }
+
+  // mixing layer
+  sctx.fillStyle="rgba(37,99,235,.07)";
+  sctx.fillRect(0,topY,W,groundY-topY);
+
+  sctx.strokeStyle="#2563eb";
+  sctx.lineWidth=4;
+  sctx.setLineDash([12,9]);
+  sctx.beginPath(); sctx.moveTo(0,topY); sctx.lineTo(W,topY); sctx.stroke();
+  sctx.setLineDash([]);
+  sctx.fillStyle="#1d4ed8";
+  sctx.font="bold 18px Arial";
+  sctx.fillText(`혼합고 ${H} m`,18,Math.max(24,topY-10));
+
+  // deterministic animated particles
+  const count=Math.round(clamp(r.concentration*1.25,15,220));
+  for(let i=0;i<count;i++){
+    const baseX=(i*97.31)%W;
+    const drift=(particlePhase*wind*5 + i*7)%W;
+    const x=(baseX+drift)%W;
+    const frac=((i*53.17)%100)/100;
+    const y=topY+10+frac*Math.max(20,groundY-topY-18);
+    const radius=1.4+((i*13)%7)/5;
+    sctx.fillStyle=`rgba(17,24,39,${0.45+0.4*(i%3)/2})`;
+    sctx.beginPath(); sctx.arc(x,y,radius,0,Math.PI*2); sctx.fill();
+  }
+
+  // wind arrows
+  sctx.strokeStyle="#0f766e";
+  sctx.fillStyle="#0f766e";
+  sctx.lineWidth=3;
+  const len=40+wind*24;
+  for(let i=0;i<3;i++){
+    const y=52+i*48;
+    const x=590;
+    sctx.beginPath(); sctx.moveTo(x,y); sctx.lineTo(x+len,y); sctx.stroke();
+    sctx.beginPath();
+    sctx.moveTo(x+len,y);
+    sctx.lineTo(x+len-12,y-7);
+    sctx.lineTo(x+len-12,y+7);
+    sctx.closePath(); sctx.fill();
+  }
+  sctx.font="15px Arial";
+  sctx.fillText(`풍속 ${wind.toFixed(1)} m/s`,590,28);
+
+  // heat plumes
+  const strength=clamp((temp+10)/40,0,1);
+  sctx.strokeStyle="#ef4444";
+  sctx.lineWidth=3;
+  for(let i=0;i<5;i++){
+    const x=90+i*48;
+    const top=groundY-20-strength*90;
+    sctx.beginPath();
+    sctx.moveTo(x,groundY-4);
+    sctx.bezierCurveTo(x-10,groundY-30,x+10,groundY-55,x,top);
+    sctx.stroke();
+  }
+  sctx.fillStyle="#b91c1c";
+  sctx.fillText(`지면온도 ${temp} ℃`,76,395);
+
+  // caption
+  sctx.fillStyle="rgba(255,255,255,.88)";
+  sctx.fillRect(18,18,235,60);
+  sctx.fillStyle="#172033";
+  sctx.font="bold 17px Arial";
+  sctx.fillText(`PM2.5 ${r.concentration.toFixed(1)} µg/m³`,31,43);
+  sctx.font="14px Arial";
+  sctx.fillText(`농축 배수 ${r.ratio.toFixed(2)}배`,31,65);
+
+  particlePhase += 0.35;
+  requestAnimationFrame(drawScene);
+}
+
+function drawChart(){
+  const W=chart.width,H=chart.height;
+  cctx.clearRect(0,0,W,H);
+  cctx.fillStyle="#ffffff";
+  cctx.fillRect(0,0,W,H);
+
+  const pad={l:58,r:20,t:26,b:48};
+  const innerW=W-pad.l-pad.r;
+  const innerH=H-pad.t-pad.b;
+  const maxY=Math.max(100,...history.map(d=>d.pm))*1.1;
+
+  cctx.strokeStyle="#d8dee9";
+  cctx.lineWidth=1;
+  cctx.font="12px Arial";
+  cctx.fillStyle="#657085";
+
+  for(let i=0;i<=5;i++){
+    const y=pad.t+innerH*i/5;
+    cctx.beginPath(); cctx.moveTo(pad.l,y); cctx.lineTo(W-pad.r,y); cctx.stroke();
+    const val=maxY*(1-i/5);
+    cctx.fillText(val.toFixed(0),10,y+4);
+  }
+
+  cctx.strokeStyle="#172033";
+  cctx.beginPath();
+  cctx.moveTo(pad.l,pad.t);
+  cctx.lineTo(pad.l,H-pad.b);
+  cctx.lineTo(W-pad.r,H-pad.b);
+  cctx.stroke();
+
+  cctx.fillStyle="#657085";
+  cctx.fillText("PM2.5 (µg/m³)",10,16);
+  cctx.fillText("조작 순서",W/2-25,H-12);
+
+  if(history.length<2) return;
+
+  cctx.strokeStyle="#2563eb";
+  cctx.lineWidth=3;
+  cctx.beginPath();
+  history.forEach((d,i)=>{
+    const x=pad.l + innerW*(i/(history.length-1));
+    const y=pad.t + innerH*(1-d.pm/maxY);
+    if(i===0)cctx.moveTo(x,y);else cctx.lineTo(x,y);
+  });
+  cctx.stroke();
+
+  history.forEach((d,i)=>{
+    const x=pad.l + innerW*(i/(history.length-1));
+    const y=pad.t + innerH*(1-d.pm/maxY);
+    cctx.fillStyle=category(d.pm).line;
+    cctx.beginPath(); cctx.arc(x,y,4,0,Math.PI*2); cctx.fill();
+  });
+}
+
+function setScenario(H,W,T){
+  heightEl.value=H; windEl.value=W; tempEl.value=T; update(true);
+}
+function resetModel(){
+  history=[];
+  heightEl.value=800; windEl.value=1.5; tempEl.value=5; update(true);
+}
+function downloadCSV(){
+  let csv="step,mixing_height_m,wind_speed_m_s,surface_temperature_C,PM25_ug_m3\n";
+  history.forEach(d=>{
+    csv += `${d.n},${d.H},${d.wind},${d.temp},${d.pm.toFixed(2)}\n`;
+  });
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download="pm25_simulation_history.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+[heightEl,windEl,tempEl].forEach(x=>x.addEventListener("input",()=>update(true)));
+resetModel();
+drawScene();
+</script>
+</body>
+</html>
